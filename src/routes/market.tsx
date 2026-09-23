@@ -249,7 +249,12 @@ function MarketPage() {
           </div>
 
           {openPackages && (
-            <InvestmentPackages group={openPackages} packages={INVESTMENT_PACKAGES[openPackages]} />
+            <InvestmentPackages
+              group={openPackages}
+              packages={INVESTMENT_PACKAGES[openPackages]}
+              activeAmount={sub?.amount ?? null}
+              onSubscribe={handleSubscribe}
+            />
           )}
         </div>
       </header>
@@ -265,11 +270,36 @@ function MarketPage() {
           <Stat label="رصيد المحفظة" value={`${fmt(balance)} ج.م`} />
           <Stat
             label="أرباح الاستثمار"
-            value={`${profit >= 0 ? "+" : ""}${fmt(profit)} ج.م`}
+            value={`${!sub && profit >= 0 ? "+" : ""}${fmt(profit)} ج.م`}
             tone={profit >= 0 ? "up" : "down"}
           />
           <Stat label="عدد الأسهم المتابعة" value={`${stocks.length}`} />
         </section>
+
+        {sub && (
+          <section className="mt-4 rounded-2xl border border-primary/40 bg-primary/5 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-bold">
+                باقة {fmt(sub.amount)} ج.م — الاستلام {fmt(sub.returnAmount)} ج.م
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {subDone ? "تم اكتمال الباقة" : `الوقت المتبقي ${formatRemaining(remainingMs(sub, now))}`}
+              </p>
+            </div>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
+              <div
+                className="h-full bg-primary transition-all"
+                style={{ width: `${Math.round(progressOf(sub, now) * 100)}%` }}
+              />
+            </div>
+            {subDone && (
+              <p className="mt-3 text-sm text-primary">
+                أرباح باقة {fmt(sub.amount)} ج.م جاهزة للسحب بعد دفع ضريبة الباقة ({fmt(sub.tax)} ج.م).
+              </p>
+            )}
+          </section>
+        )}
+
 
         <h2 className="mt-7 text-lg font-bold">حركة الأسهم المباشرة</h2>
         <p className="text-sm text-muted-foreground">
