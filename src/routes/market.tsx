@@ -81,6 +81,8 @@ function MarketPage() {
   const [modal, setModal] = useState<"withdraw" | null>(null);
   const [openPackages, setOpenPackages] = useState<PackageGroup | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [sub, setSub] = useState<Subscription | null>(null);
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     const u = getStoredUser();
