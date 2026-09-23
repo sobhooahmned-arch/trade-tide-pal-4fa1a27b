@@ -592,10 +592,46 @@ function MoneyModal({
     );
   }
 
+  // الخطوة الأولى: اختيار طريقة السحب
+  if (kind === "withdraw" && !method) {
+    return (
+      <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/60 p-4 sm:items-center">
+        <div className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-3xl border border-border bg-card p-6 text-right">
+          <h3 className="text-lg font-bold">طرق السحب</h3>
+          <p className="mt-1 text-sm text-muted-foreground">اختار الطريقة اللي عايز تستلم بيها.</p>
+          <div className="mt-4 space-y-2">
+            {WITHDRAW_METHODS.map((m) => (
+              <button
+                key={m}
+                onClick={() => {
+                  setMethod(m);
+                  setError(null);
+                }}
+                className="flex w-full items-center justify-between rounded-xl border border-border bg-background/60 px-4 py-3 font-bold transition hover:border-primary hover:text-primary"
+              >
+                <span className="flex items-center gap-2">
+                  <Smartphone aria-hidden="true" className="size-4" />
+                  {m}
+                </span>
+                <span className="text-muted-foreground">‹</span>
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={onClose}
+            className="mt-5 w-full rounded-xl border border-border px-4 py-3 text-sm"
+          >
+            إلغاء
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/60 p-4 sm:items-center">
-      <div className="w-full max-w-sm rounded-3xl border border-border bg-card p-6 text-right">
-        <h3 className="text-lg font-bold">{kind === "deposit" ? "إيداع رصيد" : "سحب رصيد"}</h3>
+      <div className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-3xl border border-border bg-card p-6 text-right">
+        <h3 className="text-lg font-bold">{kind === "deposit" ? "إيداع رصيد" : `سحب عن طريق ${method}`}</h3>
         {kind === "deposit" ? (
           <p className="mt-1 text-sm text-muted-foreground">
             هنتنقل لصفحة فيها أرقام أورنج كاش للتحويل، هتضيف فيها إثبات التحويل وتكتب المبلغ.
@@ -605,13 +641,27 @@ function MoneyModal({
             <p className="mt-1 text-sm text-muted-foreground">
               {`المتاح للسحب: ${fmt(max ?? 0)} ج.م`}
             </p>
+
+            <label className="mt-4 block text-xs text-muted-foreground">
+              الرقم اللي هيتم إرسال الأرباح عليه ({method})
+            </label>
+            <input
+              value={receiveNumber}
+              onChange={(e) => setReceiveNumber(e.target.value.replace(/[^\d+]/g, ""))}
+              inputMode="tel"
+              dir="ltr"
+              placeholder="01xxxxxxxxx"
+              className="mt-1 w-full rounded-xl border border-input bg-background/60 px-3 py-3 outline-none focus:border-primary"
+            />
+
+            <label className="mt-4 block text-xs text-muted-foreground">المبلغ</label>
             <input
               value={raw}
               onChange={(e) => setRaw(e.target.value.replace(/[^\d.]/g, ""))}
               inputMode="decimal"
               dir="ltr"
               placeholder="0.00"
-              className="mt-4 w-full rounded-xl border border-input bg-background/60 px-3 py-3 text-lg outline-none focus:border-primary"
+              className="mt-1 w-full rounded-xl border border-input bg-background/60 px-3 py-3 text-lg outline-none focus:border-primary"
             />
             <div className="mt-3 flex gap-2">
               {[500, 1000, 5000].map((v) => (
@@ -630,17 +680,21 @@ function MoneyModal({
         <div className="mt-5 flex gap-2">
           <button
             onClick={() => {
-              if (kind === "deposit") return onConfirm(0);
+              if (kind === "deposit") return onConfirm(0, "", "");
+              if (receiveNumber.trim().length < 8) return setError("اكتب رقم الاستلام صح.");
               if (!amount || amount <= 0) return setError("اكتب مبلغاً صحيحاً.");
               if (max !== undefined && amount > max) return setError("المبلغ أكبر من رصيدك.");
-              onConfirm(amount);
+              onConfirm(amount, method ?? "", receiveNumber.trim());
             }}
             className="flex-1 rounded-xl bg-primary py-3 font-bold text-primary-foreground"
           >
             تأكيد
           </button>
-          <button onClick={onClose} className="rounded-xl border border-border px-4 py-3 text-sm">
-            إلغاء
+          <button
+            onClick={() => (kind === "withdraw" ? setMethod(null) : onClose())}
+            className="rounded-xl border border-border px-4 py-3 text-sm"
+          >
+            {kind === "withdraw" ? "رجوع" : "إلغاء"}
           </button>
         </div>
       </div>
