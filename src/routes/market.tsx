@@ -138,28 +138,40 @@ function MarketPage() {
       window.setTimeout(() => setNotice(null), 5000);
       return;
     }
+    if (balance < pkg.amount) {
+      setNotice(
+        `رصيدك غير كافي للاشتراك في باقة ${fmt(pkg.amount)} ج.م، اعمل إيداع الأول.`,
+      );
+      window.setTimeout(() => setNotice(null), 6000);
+      return;
+    }
     const created = subscribe({
       identifier: user.identifier,
       amount: pkg.amount,
       returnAmount: pkg.returnAmount,
       durationMs: pkg.durationMs,
     });
+    const newBalance = updateBalance(user.identifier, -pkg.amount);
+    setBalance(newBalance);
     setSub(created);
     setNow(Date.now());
     setNotice(
-      `تم الاشتراك في باقة ${fmt(pkg.amount)} ج.م، أرباحك هتزيد لحد ${fmt(pkg.returnAmount)} ج.م خلال ${pkg.duration}.`,
+      `تم خصم ${fmt(pkg.amount)} ج.م من محفظتك والاشتراك في الباقة، أرباحك هتزيد لحد ${fmt(pkg.returnAmount)} ج.م خلال ${pkg.duration}.`,
     );
     window.setTimeout(() => setNotice(null), 6000);
   }
 
-  function applyWithdraw(amount: number) {
+  function applyWithdraw(amount: number, method: string, receiveNumber: string) {
     if (!user) return;
     addRequest({ identifier: user.identifier, name: user.name, kind: "withdraw", amount });
     setReqs(userRequests(user.identifier));
     setModal(null);
-    setNotice("تم إرسال طلب السحب، سيتم تنفيذه بعد مراجعة الإدارة.");
-    window.setTimeout(() => setNotice(null), 5000);
+    setNotice(
+      `تم إرسال طلب سحب ${fmt(amount)} ج.م عن طريق ${method} على الرقم ${receiveNumber}، سيتم تنفيذه بعد مراجعة الإدارة.`,
+    );
+    window.setTimeout(() => setNotice(null), 6000);
   }
+
 
   function handleTaxProof(senderNumber: string, proofName: string) {
     if (!user) return;
