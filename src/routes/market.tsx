@@ -342,8 +342,10 @@ function MarketPage() {
         <MoneyModal
           kind="withdraw"
           max={balance}
+          subscription={sub}
           onClose={() => setModal(null)}
           onConfirm={applyWithdraw}
+          onTaxProof={handleTaxProof}
         />
       )}
     </main>
