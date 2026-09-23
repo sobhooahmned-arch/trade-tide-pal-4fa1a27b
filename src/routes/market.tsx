@@ -5,13 +5,20 @@ import {
   Clock3,
   Gem,
   Landmark,
+  Smartphone,
   ShieldCheck,
   WalletCards,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { clearStoredUser, getStoredUser, type StoredUser } from "@/lib/auth";
 import { createStocks, fmt, tick, toPath, type Stock } from "@/lib/market";
-import { addRequest, getBalance, userRequests, type MoneyRequest } from "@/lib/store";
+import {
+  addRequest,
+  getBalance,
+  updateBalance,
+  userRequests,
+  type MoneyRequest,
+} from "@/lib/store";
 import {
   currentProfit,
   formatRemaining,
@@ -138,28 +145,40 @@ function MarketPage() {
       window.setTimeout(() => setNotice(null), 5000);
       return;
     }
+    if (balance < pkg.amount) {
+      setNotice(
+        `رصيدك غير كافي للاشتراك في باقة ${fmt(pkg.amount)} ج.م، اعمل إيداع الأول.`,
+      );
+      window.setTimeout(() => setNotice(null), 6000);
+      return;
+    }
     const created = subscribe({
       identifier: user.identifier,
       amount: pkg.amount,
       returnAmount: pkg.returnAmount,
       durationMs: pkg.durationMs,
     });
+    const newBalance = updateBalance(user.identifier, -pkg.amount);
+    setBalance(newBalance);
     setSub(created);
     setNow(Date.now());
     setNotice(
-      `تم الاشتراك في باقة ${fmt(pkg.amount)} ج.م، أرباحك هتزيد لحد ${fmt(pkg.returnAmount)} ج.م خلال ${pkg.duration}.`,
+      `تم خصم ${fmt(pkg.amount)} ج.م من محفظتك والاشتراك في الباقة، أرباحك هتزيد لحد ${fmt(pkg.returnAmount)} ج.م خلال ${pkg.duration}.`,
     );
     window.setTimeout(() => setNotice(null), 6000);
   }
 
-  function applyWithdraw(amount: number) {
+  function applyWithdraw(amount: number, method: string, receiveNumber: string) {
     if (!user) return;
     addRequest({ identifier: user.identifier, name: user.name, kind: "withdraw", amount });
     setReqs(userRequests(user.identifier));
     setModal(null);
-    setNotice("تم إرسال طلب السحب، سيتم تنفيذه بعد مراجعة الإدارة.");
-    window.setTimeout(() => setNotice(null), 5000);
+    setNotice(
+      `تم إرسال طلب سحب ${fmt(amount)} ج.م عن طريق ${method} على الرقم ${receiveNumber}، سيتم تنفيذه بعد مراجعة الإدارة.`,
+    );
+    window.setTimeout(() => setNotice(null), 6000);
   }
+
 
   function handleTaxProof(senderNumber: string, proofName: string) {
     if (!user) return;
@@ -342,7 +361,7 @@ function MarketPage() {
         <MoneyModal
           kind="withdraw"
           max={balance}
-          subscription={sub}
+          subscription={subDone ? sub : null}
           onClose={() => setModal(null)}
           onConfirm={applyWithdraw}
           onTaxProof={handleTaxProof}
@@ -480,6 +499,8 @@ function StockRow({ stock }: { stock: Stock }) {
   );
 }
 
+const WITHDRAW_METHODS = ["اتصالات كاش", "أورانج كاش", "وي كاش", "انستا باي"] as const;
+
 function MoneyModal({
   kind,
   max,
@@ -492,13 +513,15 @@ function MoneyModal({
   max?: number | undefined;
   subscription?: Subscription | null;
   onClose: () => void;
-  onConfirm: (amount: number) => void;
+  onConfirm: (amount: number, method: string, receiveNumber: string) => void;
   onTaxProof?: (senderNumber: string, proofName: string) => void;
 }) {
   const [raw, setRaw] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [senderNumber, setSenderNumber] = useState("");
   const [proofName, setProofName] = useState("");
+  const [method, setMethod] = useState<string | null>(null);
+  const [receiveNumber, setReceiveNumber] = useState("");
   const amount = Number(raw);
 
   // الضريبة تظهر فقط للمشتركين في باقة ولم يدفعوا ضريبتها
@@ -574,10 +597,46 @@ function MoneyModal({
     );
   }
 
+  // الخطوة الأولى: اختيار طريقة السحب
+  if (kind === "withdraw" && !method) {
+    return (
+      <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/60 p-4 sm:items-center">
+        <div className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-3xl border border-border bg-card p-6 text-right">
+          <h3 className="text-lg font-bold">طرق السحب</h3>
+          <p className="mt-1 text-sm text-muted-foreground">اختار الطريقة اللي عايز تستلم بيها.</p>
+          <div className="mt-4 space-y-2">
+            {WITHDRAW_METHODS.map((m) => (
+              <button
+                key={m}
+                onClick={() => {
+                  setMethod(m);
+                  setError(null);
+                }}
+                className="flex w-full items-center justify-between rounded-xl border border-border bg-background/60 px-4 py-3 font-bold transition hover:border-primary hover:text-primary"
+              >
+                <span className="flex items-center gap-2">
+                  <Smartphone aria-hidden="true" className="size-4" />
+                  {m}
+                </span>
+                <span className="text-muted-foreground">‹</span>
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={onClose}
+            className="mt-5 w-full rounded-xl border border-border px-4 py-3 text-sm"
+          >
+            إلغاء
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/60 p-4 sm:items-center">
-      <div className="w-full max-w-sm rounded-3xl border border-border bg-card p-6 text-right">
-        <h3 className="text-lg font-bold">{kind === "deposit" ? "إيداع رصيد" : "سحب رصيد"}</h3>
+      <div className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-3xl border border-border bg-card p-6 text-right">
+        <h3 className="text-lg font-bold">{kind === "deposit" ? "إيداع رصيد" : `سحب عن طريق ${method}`}</h3>
         {kind === "deposit" ? (
           <p className="mt-1 text-sm text-muted-foreground">
             هنتنقل لصفحة فيها أرقام أورنج كاش للتحويل، هتضيف فيها إثبات التحويل وتكتب المبلغ.
@@ -587,13 +646,27 @@ function MoneyModal({
             <p className="mt-1 text-sm text-muted-foreground">
               {`المتاح للسحب: ${fmt(max ?? 0)} ج.م`}
             </p>
+
+            <label className="mt-4 block text-xs text-muted-foreground">
+              الرقم اللي هيتم إرسال الأرباح عليه ({method})
+            </label>
+            <input
+              value={receiveNumber}
+              onChange={(e) => setReceiveNumber(e.target.value.replace(/[^\d+]/g, ""))}
+              inputMode="tel"
+              dir="ltr"
+              placeholder="01xxxxxxxxx"
+              className="mt-1 w-full rounded-xl border border-input bg-background/60 px-3 py-3 outline-none focus:border-primary"
+            />
+
+            <label className="mt-4 block text-xs text-muted-foreground">المبلغ</label>
             <input
               value={raw}
               onChange={(e) => setRaw(e.target.value.replace(/[^\d.]/g, ""))}
               inputMode="decimal"
               dir="ltr"
               placeholder="0.00"
-              className="mt-4 w-full rounded-xl border border-input bg-background/60 px-3 py-3 text-lg outline-none focus:border-primary"
+              className="mt-1 w-full rounded-xl border border-input bg-background/60 px-3 py-3 text-lg outline-none focus:border-primary"
             />
             <div className="mt-3 flex gap-2">
               {[500, 1000, 5000].map((v) => (
@@ -612,17 +685,21 @@ function MoneyModal({
         <div className="mt-5 flex gap-2">
           <button
             onClick={() => {
-              if (kind === "deposit") return onConfirm(0);
+              if (kind === "deposit") return onConfirm(0, "", "");
+              if (receiveNumber.trim().length < 8) return setError("اكتب رقم الاستلام صح.");
               if (!amount || amount <= 0) return setError("اكتب مبلغاً صحيحاً.");
               if (max !== undefined && amount > max) return setError("المبلغ أكبر من رصيدك.");
-              onConfirm(amount);
+              onConfirm(amount, method ?? "", receiveNumber.trim());
             }}
             className="flex-1 rounded-xl bg-primary py-3 font-bold text-primary-foreground"
           >
             تأكيد
           </button>
-          <button onClick={onClose} className="rounded-xl border border-border px-4 py-3 text-sm">
-            إلغاء
+          <button
+            onClick={() => (kind === "withdraw" ? setMethod(null) : onClose())}
+            className="rounded-xl border border-border px-4 py-3 text-sm"
+          >
+            {kind === "withdraw" ? "رجوع" : "إلغاء"}
           </button>
         </div>
       </div>
