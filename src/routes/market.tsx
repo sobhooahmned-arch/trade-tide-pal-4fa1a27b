@@ -97,10 +97,16 @@ function MarketPage() {
     setUser(u);
     setBalance(getBalance(u.identifier));
     setReqs(userRequests(u.identifier));
+    setSub(getSubscription(u.identifier));
   }, [navigate]);
 
   useEffect(() => {
     const id = window.setInterval(() => setStocks((s) => tick(s)), 1200);
+    return () => window.clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(id);
   }, []);
 
@@ -114,13 +120,37 @@ function MarketPage() {
     return () => window.clearInterval(id);
   }, [user]);
 
-  const profit = useMemo(
+  const marketProfit = useMemo(
     () =>
       balance <= 0 ? 0 : stocks.reduce((acc, s) => acc + (s.change / 100) * (balance / 6), 0),
     [stocks, balance],
   );
 
+  const profit = sub ? currentProfit(sub, now) : marketProfit;
+  const subDone = sub ? progressOf(sub, now) >= 1 : false;
+
   if (!user) return null;
+
+  function handleSubscribe(pkg: InvestmentPackage) {
+    if (!user) return;
+    if (sub) {
+      setNotice("أنت مشترك بالفعل في باقة، استلم أرباحها الأول.");
+      window.setTimeout(() => setNotice(null), 5000);
+      return;
+    }
+    const created = subscribe({
+      identifier: user.identifier,
+      amount: pkg.amount,
+      returnAmount: pkg.returnAmount,
+      durationMs: pkg.durationMs,
+    });
+    setSub(created);
+    setNow(Date.now());
+    setNotice(
+      `تم الاشتراك في باقة ${fmt(pkg.amount)} ج.م، أرباحك هتزيد لحد ${fmt(pkg.returnAmount)} ج.م خلال ${pkg.duration}.`,
+    );
+    window.setTimeout(() => setNotice(null), 6000);
+  }
 
   function applyWithdraw(amount: number) {
     if (!user) return;
@@ -130,6 +160,16 @@ function MarketPage() {
     setNotice("تم إرسال طلب السحب، سيتم تنفيذه بعد مراجعة الإدارة.");
     window.setTimeout(() => setNotice(null), 5000);
   }
+
+  function handleTaxProof(senderNumber: string, proofName: string) {
+    if (!user) return;
+    submitTaxProof({ identifier: user.identifier, senderNumber, proofName });
+    setSub(getSubscription(user.identifier));
+    setModal(null);
+    setNotice("تم إرسال إثبات دفع الضريبة، سيتم مراجعته وتحويل الأرباح.");
+    window.setTimeout(() => setNotice(null), 6000);
+  }
+
 
   return (
     <main className="min-h-screen pb-16">
