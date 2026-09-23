@@ -11,7 +11,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { clearStoredUser, getStoredUser, type StoredUser } from "@/lib/auth";
 import { createStocks, fmt, tick, toPath, type Stock } from "@/lib/market";
-import { addRequest, getBalance, userRequests, type MoneyRequest } from "@/lib/store";
+import {
+  addRequest,
+  getBalance,
+  updateBalance,
+  userRequests,
+  type MoneyRequest,
+} from "@/lib/store";
 import {
   currentProfit,
   formatRemaining,
