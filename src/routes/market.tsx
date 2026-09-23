@@ -483,17 +483,96 @@ function StockRow({ stock }: { stock: Stock }) {
 function MoneyModal({
   kind,
   max,
+  subscription,
   onClose,
   onConfirm,
+  onTaxProof,
 }: {
   kind: "deposit" | "withdraw";
   max?: number | undefined;
+  subscription?: Subscription | null;
   onClose: () => void;
   onConfirm: (amount: number) => void;
+  onTaxProof?: (senderNumber: string, proofName: string) => void;
 }) {
   const [raw, setRaw] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [senderNumber, setSenderNumber] = useState("");
+  const [proofName, setProofName] = useState("");
   const amount = Number(raw);
+
+  // الضريبة تظهر فقط للمشتركين في باقة ولم يدفعوا ضريبتها
+  const needsTax = Boolean(subscription) && !subscription?.taxPaid;
+  const tax = subscription ? (subscription.tax || PACKAGE_TAX[subscription.amount] || 0) : 0;
+
+  if (needsTax && subscription) {
+    return (
+      <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/60 p-4 sm:items-center">
+        <div className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-3xl border border-border bg-card p-6 text-right">
+          <h3 className="flex items-center gap-2 text-lg font-bold">
+            <ShieldCheck aria-hidden="true" className="text-primary" />
+            دفع ضريبة الباقة
+          </h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            عشان تتم عملية سحب أرباح باقة {fmt(subscription.amount)} ج.م، لازم تدفع ضريبة الباقة
+            الأول.
+          </p>
+          <p className="mt-3 rounded-xl border border-primary/40 bg-primary/10 px-4 py-3 text-sm font-bold text-primary">
+            الضريبة المطلوبة: {fmt(tax)} ج.م
+          </p>
+
+          <div className="mt-4 rounded-xl border border-border bg-background/60 px-4 py-3">
+            <p className="text-xs text-muted-foreground">
+              1- حوّل الضريبة المطلوبة على الرقم ده لاستلام الأرباح مباشرة
+            </p>
+            <p className="mt-1 text-lg font-black tabular-nums" dir="ltr">
+              {TAX_PHONE}
+            </p>
+          </div>
+
+          <label className="mt-4 block text-xs text-muted-foreground">
+            2- الرقم الذي تم التحويل منه
+          </label>
+          <input
+            value={senderNumber}
+            onChange={(e) => setSenderNumber(e.target.value.replace(/[^\d+]/g, ""))}
+            inputMode="tel"
+            dir="ltr"
+            placeholder="01xxxxxxxxx"
+            className="mt-1 w-full rounded-xl border border-input bg-background/60 px-3 py-3 outline-none focus:border-primary"
+          />
+
+          <label className="mt-4 block text-xs text-muted-foreground">3- إثبات التحويل</label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setProofName(e.target.files?.[0]?.name ?? "")}
+            className="mt-1 w-full rounded-xl border border-input bg-background/60 px-3 py-2 text-sm"
+          />
+          {proofName && <p className="mt-1 text-xs text-primary">{proofName}</p>}
+
+          {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
+
+          <div className="mt-5 flex gap-2">
+            <button
+              onClick={() => {
+                if (senderNumber.trim().length < 8) return setError("اكتب رقم التحويل صح.");
+                if (!proofName) return setError("أضف إثبات التحويل.");
+                setError(null);
+                onTaxProof?.(senderNumber.trim(), proofName);
+              }}
+              className="flex-1 rounded-xl bg-primary py-3 font-bold text-primary-foreground"
+            >
+              إرسال إثبات الدفع
+            </button>
+            <button onClick={onClose} className="rounded-xl border border-border px-4 py-3 text-sm">
+              إلغاء
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/60 p-4 sm:items-center">
