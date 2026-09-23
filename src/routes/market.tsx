@@ -498,6 +498,8 @@ function StockRow({ stock }: { stock: Stock }) {
   );
 }
 
+const WITHDRAW_METHODS = ["اتصالات كاش", "أورانج كاش", "وي كاش", "انستا باي"] as const;
+
 function MoneyModal({
   kind,
   max,
@@ -510,13 +512,15 @@ function MoneyModal({
   max?: number | undefined;
   subscription?: Subscription | null;
   onClose: () => void;
-  onConfirm: (amount: number) => void;
+  onConfirm: (amount: number, method: string, receiveNumber: string) => void;
   onTaxProof?: (senderNumber: string, proofName: string) => void;
 }) {
   const [raw, setRaw] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [senderNumber, setSenderNumber] = useState("");
   const [proofName, setProofName] = useState("");
+  const [method, setMethod] = useState<string | null>(null);
+  const [receiveNumber, setReceiveNumber] = useState("");
   const amount = Number(raw);
 
   // الضريبة تظهر فقط للمشتركين في باقة ولم يدفعوا ضريبتها
