@@ -355,9 +355,13 @@ function MarketPage() {
 function InvestmentPackages({
   group,
   packages,
+  activeAmount,
+  onSubscribe,
 }: {
   group: PackageGroup;
   packages: InvestmentPackage[];
+  activeAmount: number | null;
+  onSubscribe: (pkg: InvestmentPackage) => void;
 }) {
   const isLarge = group === "large";
 
@@ -395,6 +399,15 @@ function InvestmentPackages({
             <Clock3 aria-hidden="true" className="size-3.5" />
             خلال {item.duration}
           </p>
+          <Button
+            type="button"
+            variant={activeAmount === item.amount ? "secondary" : "default"}
+            disabled={activeAmount !== null}
+            onClick={() => onSubscribe(item)}
+            className="mt-3 w-full rounded-lg font-bold"
+          >
+            {activeAmount === item.amount ? "مشترك في الباقة" : "اشتراك في الباقة"}
+          </Button>
         </article>
       ))}
     </section>
