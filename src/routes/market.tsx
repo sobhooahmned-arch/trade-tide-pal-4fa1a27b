@@ -5,6 +5,7 @@ import {
   Clock3,
   Gem,
   Landmark,
+  Smartphone,
   ShieldCheck,
   WalletCards,
 } from "lucide-react";
